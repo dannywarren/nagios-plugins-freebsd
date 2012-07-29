@@ -1,0 +1,58 @@
+#!/bin/sh
+
+# Arguments
+WARN_PERCENT=$1
+CRIT_PERCENT=$2
+POOL=$3
+
+# Defaults
+ZPOOL_CMD=/sbin/zpool
+
+# Verify options passed in
+if [ -z "${POOL}" ]
+then
+  exit 1
+fi
+
+# Get zpool status
+STATUS=`${ZPOOL_CMD} list -H -o size,alloc,free,cap ${POOL}`
+
+# Verify zpool status
+if [ -z "${STATUS}" ]
+then
+  echo "UNKNOWN: zpool ${POOL} not found"
+  exit 3
+fi
+
+# Parse zpool status
+SIZE=`echo ${STATUS} | awk '{print $1}'`
+USED=`echo ${STATUS} | awk '{print $2}'`
+FREE=`echo ${STATUS} | awk '{print $3}'`
+USED_PERCENT=`echo ${STATUS} | awk '{print $4}'`
+
+# Remove percent signs 
+WARN_PERCENT=`echo ${WARN_PERCENT} | sed 's/%//'` 
+CRIT_PERCENT=`echo ${CRIT_PERCENT} | sed 's/%//'` 
+USED_PERCENT=`echo ${USED_PERCENT} | sed 's/%//'` 
+
+# Get the percentage of free disk space
+FREE_PERCENT=$(( 100 - $USED_PERCENT ))
+
+# Default return statuses
+EXIT_CODE=0
+EXIT_STATUS=OK
+
+# Check for critical and warning states
+if [ $FREE_PERCENT -le $CRIT_PERCENT ]
+then
+  EXIT_CODE=2
+  EXIT_STATUS=CRITICAL
+elif [ $FREE_PERCENT -le $WARN_PERCENT ]
+then
+  EXIT_CODE=1
+  EXIT_STATUS=WARNING
+fi
+
+# Display nagios status and exit
+echo "${EXIT_STATUS}: ${POOL} is ${USED_PERCENT}% full (${USED} of ${SIZE}, ${FREE} free)"
+exit $EXIT_CODE

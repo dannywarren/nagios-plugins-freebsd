@@ -1,0 +1,38 @@
+#!/bin/sh
+
+# Command line arguments
+POOL=$1
+
+# Defaults
+ZPOOL_CMD=/sbin/zpool
+
+# Verify arguments
+if [ -z "${POOL}" ]
+then
+  exit 1
+fi
+
+# Get zpool health status
+STATUS=`${ZPOOL_CMD} list -H -o health ${POOL}`
+
+# Verify status was returned
+if [ -z "${STATUS}" ]
+then
+  echo "UNKNOWN: zpool ${POOL} not found"
+  exit 3
+fi
+
+# Default nagios exit code and status
+EXIT_CODE=0
+EXIT_STATUS=OK
+
+# Check for critical state
+if [ "${STATUS}" != "ONLINE" ]
+then
+  EXIT_CODE=2
+  EXIT_STATUS=CRITICAL
+fi
+
+# Display nagios message and exit
+echo "${EXIT_STATUS}: ${POOL} is ${STATUS}"
+exit ${EXIT_CODE}
