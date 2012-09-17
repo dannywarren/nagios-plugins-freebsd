@@ -1,0 +1,58 @@
+#!/bin/sh
+
+# Arguments
+DISK=$1
+EXPECTED_MOUNTPOINT=$2
+
+# Defaults
+ZFS_CMD=/sbin/zfs
+
+# Verify options passed in
+if [ -z "${DISK}" ]
+then
+  exit 1
+fi
+
+# Get the zfs mount status
+MOUNTED=`${ZFS_CMD} get -H -o value mounted ${DISK}`
+MOUNTED_STATUS=$?
+
+# Verify disk was found by zfs
+if [ -z "${MOUNTED}" ] || [ ${MOUNTED_STATUS} -ne 0 ] 
+then
+  echo "CRITICAL: ${DISK} not found"
+  exit 2
+fi
+
+# Verify disk is reported as mounted by zfs
+if [ ${MOUNTED} == "no" ]
+then
+  echo "CRITICAL: ${DISK} not mounted"
+  exit 2
+fi
+
+# Get the zfs mountpoint
+MOUNTPOINT=`${ZFS_CMD} get -H -o value mountpoint ${DISK}`
+MOUNTPOINT_STATUS=$?
+
+# Verify mountpoint was found by zfs
+if [ -z "${MOUNTPOINT}" ] || [ ${MOUNTPOINT_STATUS} -ne 0 ]
+then
+  echo "UNKNOWN: ${DISK} no mountpoint"
+  exit 1
+fi
+
+# Verify mountpoint is same as expected, if passed in
+if [ ! -z "${EXPECTED_MOUNTPOINT}" ]
+then
+  if [ "${MOUNTPOINT}" != "${EXPECTED_MOUNTPOINT}" ]
+  then
+    echo "CRITICAL: ${DISK} wrong mountpoint: ${MOUNTPOINT}"
+    exit 2
+  fi
+fi
+
+# Finally, display success
+echo "OK: ${DISK} mounted: ${MOUNTPOINT}"
+exit 0
+
