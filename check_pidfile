@@ -1,0 +1,66 @@
+#!/bin/sh
+
+# Arguments
+PIDFILE=$1
+EXPECTED_CMD=$2
+
+# Defaults
+PROCSTAT_CMD=/usr/bin/procstat
+
+# Verify options passed in
+if [ -z "${PIDFILE}" ] || [ -z "${EXPECTED_CMD}" ]
+then
+  echo "usage: check_pidfile [pidfile] [expected_cmd]"
+  exit 1
+fi
+
+# Make sure the pid file exists
+if [ ! -f ${PIDFILE} ]
+then
+  echo "CRITICAL: ${EXPECTED_CMD}: file ${PIDFILE} not found"
+  exit 2
+fi
+
+# Read in the pid
+PID=`cat ${PIDFILE}`
+PIDFILE_STATUS=$?
+
+# Verify pid file could be read
+if [ ${PIDFILE_STATUS} -ne 0 ]
+then
+  echo "CRITICAL: ${EXPECTED_CMD}: can't read file ${PIDFILE}"
+  exit 2
+fi
+
+# Verify pid was found in the file
+if [ -z "${PID}" ] || [ ! ${PID} -gt 0 ]
+then
+  echo "CRITICAL: ${EXPECTED_CMD}: file ${PIDFILE} empty"
+  exit 2
+fi
+
+# Get the procstat output
+PROCSTAT=`${PROCSTAT_CMD} -h -c ${PID}`
+PROCSTAT_STATUS=$?
+
+# Verify results
+if [ -z "${PROCSTAT}" ] || [ ${PROCSTAT_STATUS} -ne 0 ] 
+then
+  echo "CRITICAL: ${EXPECTED_CMD}: pid ${PID} not found"
+  exit 2
+fi
+
+# Parse the command name from the output
+ACTUAL_CMD=`echo ${PROCSTAT} | awk '{print $2}'`
+
+# Verify disk is reported as mounted by zfs
+if [ "${ACTUAL_CMD}" != "${EXPECTED_CMD}" ]
+then
+  echo "CRITICAL: ${EXPECTED_CMD}: pid ${PID} found, but wrong process: ${ACTUAL_CMD}"
+  exit 2
+fi
+
+# Finally, display success
+echo "OK: ${EXPECTED_CMD} running: pid ${PID}"
+exit 0
+
