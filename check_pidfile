@@ -22,7 +22,7 @@ then
 fi
 
 # Read in the pid
-PID=`cat ${PIDFILE}`
+PID=`cat ${PIDFILE} | head -1`
 PIDFILE_STATUS=$?
 
 # Verify pid file could be read
