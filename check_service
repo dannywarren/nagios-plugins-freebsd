@@ -1,0 +1,37 @@
+#!/bin/sh
+
+# Arguments
+SERVICE=$1
+
+# Defaults
+SERVICE_CMD=/usr/sbin/service
+
+# Verify arguments
+if [ -z "${SERVICE}" ] 
+then
+  echo "usage: check_service [service]"
+  exit 1
+fi
+
+# Get the service status
+SERVICE_OUTPUT=`${SERVICE_CMD} ${SERVICE} status`
+SERVICE_STATUS=$?
+
+# Handle null output
+if [ -z "${SERVICE_OUTPUT}" ]
+then
+  echo "UNKNOWN: no result from service ${SERVICE}"
+  exit 3
+fi
+
+# Handle error result
+if [ ${SERVICE_STATUS} -ne 0 ] 
+then
+  echo "CRITICAL: ${SERVICE_OUTPUT}"
+  exit 2
+fi
+
+# Finally, display success
+echo "OK: ${SERVICE_OUTPUT}"
+exit 0
+
