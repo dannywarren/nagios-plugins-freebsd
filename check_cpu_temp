@@ -36,19 +36,24 @@ fi
 # so that we can do some comparisons safely
 CORE_TEMP=`echo ${CORE_TEMP_STDOUT} | sed 's/[^0-9.]*//g'`
 
+# Default exit code
+EXIT_CODE=${NAGIOS_OK}
+EXIT_STATUS=OK
+
 # Check for critical and warning conditions
 # NOTE: We are using bc here so that we can handle float comparisons
 if [ `echo ${CORE_TEMP} \> ${CRITICAL_TEMP} | ${BC_CMD}` -eq 1 ]
 then
-  echo "CRITICAL: ${CORE_TEMP}C (Crit: ${CRITICAL_TEMP}C)"
-  exit ${NAGIOS_CRITICAL}
+  EXIT_CODE=${NAGIOS_CRITICAL}
+  EXIT_STATUS=CRITICAL
 elif [ `echo ${CORE_TEMP} \> ${WARNING_TEMP} | ${BC_CMD}` -eq 1 ]
 then
-  echo "WARNING: ${CORE_TEMP}C (Warn: ${CRITICAL_TEMP}C)"
-  exit ${NAGIOS_CRITICAL}
+  STATUS 
+  EXIT_CODE=${NAGIOS_CRITICAL}
+  EXIT_STATUS=WARNING
 fi
 
-# OK
-echo "OK: ${CORE_TEMP}C"
-exit ${NAGIOS_OK}
+# Display nagios status and exit
+echo "${EXIT_STATUS}: ${CORE} is ${CORE_TEMP}C"
+exit $EXIT_CODE
 
