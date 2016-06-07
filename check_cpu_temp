@@ -1,0 +1,54 @@
+#!/bin/sh
+
+# Arguments
+CORE=$1
+WARNING_TEMP=$2
+CRITICAL_TEMP=$3
+
+# Nagios exit codes
+NAGIOS_OK=0
+NAGIOS_WARNING=1
+NAGIOS_CRITICAL=2
+NAGIOS_UNKNOWN=3
+
+# Defaults
+SYSCTL_CMD=/sbin/sysctl
+BC_CMD=/usr/bin/bc
+
+# Verify options passed in
+if [ -z "${CORE}" ] || [ -z "${WARNING_TEMP}" ] || [ -z "${CRITICAL_TEMP}" ]
+then
+  echo "usage: check_cpu_temp [core] [warning] [critical]"
+  exit ${NAGIOS_UNKNOWN}
+fi
+
+# Query sysctl to grab the temp for this core
+CORE_TEMP_STDOUT=`${SYSCTL_CMD} -n hw.acpi.thermal.${CORE}.temperature`
+CORE_TEMP_STATUS=$?
+
+# If we got no output or a bad exit code, bail out now
+if [ -z "${CORE_TEMP_STDOUT}" ] || [ ${CORE_TEMP_STATUS} -ne 0 ] 
+then
+  exit ${NAGIOS_UNKNOWN}
+fi
+
+# Strip out any non-numeric characters from the core temp
+# so that we can do some comparisons safely
+CORE_TEMP=`echo ${CORE_TEMP_STDOUT} | sed 's/[^0-9.]*//g'`
+
+# Check for critical and warning conditions
+# NOTE: We are using bc here so that we can handle float comparisons
+if [ `echo ${CORE_TEMP} \> ${CRITICAL_TEMP} | ${BC_CMD}` -eq 1 ]
+then
+  echo "CRITICAL: ${CORE_TEMP}C (Crit: ${CRITICAL_TEMP}C)"
+  exit ${NAGIOS_CRITICAL}
+elif [ `echo ${CORE_TEMP} \> ${WARNING_TEMP} | ${BC_CMD}` -eq 1 ]
+then
+  echo "WARNING: ${CORE_TEMP}C (Warn: ${CRITICAL_TEMP}C)"
+  exit ${NAGIOS_CRITICAL}
+fi
+
+# OK
+echo "OK: ${CORE_TEMP}C"
+exit ${NAGIOS_OK}
+
