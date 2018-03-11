@@ -1,0 +1,37 @@
+#!/usr/bin/env sh
+
+# Nagios exit codes
+NAGIOS_OK=0
+NAGIOS_WARNING=1
+NAGIOS_CRITICAL=2
+NAGIOS_UNKNOWN=3
+
+# Defaults
+PKG_CMD="/usr/sbin/pkg"
+
+# Get audit results from pkg database
+AUDIT_OUTPUT=`${PKG_CMD} audit --fetch --quiet`
+AUDIT_STATUS=$?
+
+# If we got data back 
+if [ ${AUDIT_STATUS} -ne 0 ] && [ ! -z "${AUDIT_OUTPUT}" ]; then
+
+  # Count the number of vulnerable packages reported
+  VULN_COUNT=`echo "${AUDIT_OUTPUT}" | wc -l | awk '{print $1}'`
+
+  # Build a list of just the package names to show
+  VULN_PKG_LIST=""
+  for PKG in ${AUDIT_OUTPUT}; do
+    PKG_NAME=`echo ${PKG} | cut -d- -f1`
+    VULN_PKG_LIST="${VULN_PKG_LIST} ${PKG_NAME}"
+  done
+
+  # Throw critical error and exit
+  echo "CRITICAL: ${VULN_COUNT} vulnerable pkgs:$VULN_PKG_LIST"
+  exit ${NAGIOS_CRITICAL}
+
+fi
+
+# Finally, display success
+echo "OK"
+exit ${NAGIOS_OK}
