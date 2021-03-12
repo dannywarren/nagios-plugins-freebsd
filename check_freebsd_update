@@ -1,0 +1,44 @@
+#!/usr/bin/env sh
+
+# Nagios exit codes
+NAGIOS_OK=0
+NAGIOS_WARNING=1
+NAGIOS_CRITICAL=2
+NAGIOS_UNKNOWN=3
+
+# Defaults
+UPDATE_CMD="/usr/sbin/freebsd-update"
+VERSION_CMD="/bin/freebsd-version"
+
+# Check if update command exists
+if [ ! -x "${UPDATE_CMD}" ]; then
+  echo "UNKNOWN: unable to exec ${UPDATE_CMD}"
+  exit ${NAGIOS_UNKNOWN} 
+fi
+
+# Get updatesready results 
+UPDATE_OUTPUT=$( ${UPDATE_CMD} updatesready )
+UPDATE_STATUS=$?
+
+# Get current freebsd version
+VERSION_OUTPUT=$( ${VERSION_CMD} )
+
+# Verify output
+if [ -z "${UPDATE_OUTPUT}" ]; then
+  echo "UNKNOWN: no output from ${UPDATE_CMD}"
+  exit ${NAGIOS_UNKNOWN} 
+fi
+
+# If updates are available by looking for exit code 2
+# See: man freebsd-update
+if [ ${UPDATE_STATUS} -ne 2 ]; then
+
+  # Throw critical error and exit
+  echo "CRITICAL: ${UPDATE_OUTPUT} ($VERSION_OUTPUT)"
+  exit ${NAGIOS_CRITICAL}
+
+fi
+
+# Finally, display success
+echo "OK: ${VERSION_OUTPUT}"
+exit ${NAGIOS_OK}
